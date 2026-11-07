@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#e8f1e1">
+<title>DietApp — Seguidor de dieta con IA</title>
+<script>try{document.documentElement.dataset.theme=localStorage.getItem("nutri:theme")||(matchMedia("(prefers-color-scheme:dark)").matches?"dark":"light")}catch{}</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500;700&family=Hanken+Grotesk:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header class="top">
+  <a class="logo" href="#hoy">DietApp</a>
+  <nav><a href="#hoy">Hoy</a><a href="#semana">Semana</a><a href="#registro">Registro</a></nav>
+  <div class="tools">
+    <button class="btn" id="themeBtn">Modo oscuro</button>
+    <button class="btn dark" id="profBtn">Mi perfil</button>
+  </div>
+</header>
+
+<main>
+  <section id="hoy" class="hero">
+    <div>
+      <div class="days">
+        <button id="dPrev" aria-label="Día anterior">‹</button>
+        <strong id="today"></strong>
+        <button id="dNext" aria-label="Día siguiente">›</button>
+      </div>
+      <h1>Sacale una foto a tu plato y conta las calorías.</h1>
+      <p class="lead">Calorías, proteínas, carbohidratos y grasas en segundos. Todo queda guardado en tu dispositivo.</p>
+      <div class="cta">
+        <button class="btn dark" id="camBtn">Cámara</button>
+        <button class="btn" id="galBtn">Galería</button>
+        <button class="btn" id="manBtn">A mano</button>
+      </div>
+      <input type="file" id="cam" accept="image/*" capture="environment" hidden>
+      <input type="file" id="gal" accept="image/*" hidden>
+    </div>
+
+    <aside class="card" aria-label="Resumen del día">
+      <div class="ring">
+        <svg viewBox="0 0 220 220" aria-hidden="true">
+          <circle cx="110" cy="110" r="95" class="track"/>
+          <circle cx="110" cy="110" r="95" class="prog" id="prog"/>
+        </svg>
+        <div class="center"><span class="big" id="kcal">0</span><span id="left"></span></div>
+      </div>
+      <div class="m"><div class="row"><span>Proteínas</span><span id="pT"></span></div><div class="bar"><i id="pB" style="background:var(--p)"></i></div></div>
+      <div class="m"><div class="row"><span>Carbohidratos</span><span id="cT"></span></div><div class="bar"><i id="cB" style="background:var(--c)"></i></div></div>
+      <div class="m"><div class="row"><span>Grasas</span><span id="fT"></span></div><div class="bar"><i id="fB" style="background:var(--f)"></i></div></div>
+      <p class="meta"><span id="metaTxt"></span> <button class="link" id="profLink"></button></p>
+    </aside>
+  </section>
+
+  <section id="analizar" class="an card" hidden>
+    <div id="prevBox">
+      <img id="img" alt="Foto del plato">
+      <p id="status" role="status"></p>
+    </div>
+    <form id="form">
+      <h2>Revisá y agregá</h2>
+      <label>Plato<input id="fName" required placeholder="Ej: Milanesa con ensalada"></label>
+      <label>Comida<select id="fMeal">
+        <option value="desayuno">Desayuno</option><option value="almuerzo">Almuerzo</option>
+        <option value="merienda">Merienda</option><option value="cena">Cena</option><option value="snack">Snack</option>
+      </select></label>
+      <div class="g2">
+        <label>Calorías (kcal)<input id="fK" type="number" min="0" required></label>
+        <label>Proteínas (g)<input id="fP" type="number" min="0"></label>
+        <label>Carbohidratos (g)<input id="fC" type="number" min="0"></label>
+        <label>Grasas (g)<input id="fF" type="number" min="0"></label>
+      </div>
+      <p class="note" id="note"></p>
+      <div class="row end"><button type="button" class="btn" id="cancelBtn">Cancelar</button><button class="btn dark">Agregar al día</button></div>
+    </form>
+  </section>
+
+  <section id="semana">
+    <h2>Tu semana</h2>
+    <p class="sub">Tocá un día para ver o completar lo que comiste. La línea punteada es tu meta.</p>
+    <div class="week card" id="week"></div>
+  </section>
+
+  <section id="registro">
+    <h2>Lo que comiste</h2>
+    <ul id="list"></ul>
+  </section>
+</main>
+
+<footer>
+  <span class="logo">DietApp</span>
+  <p>Las estimaciones son aproximadas y no reemplazan a un profesional de la salud.</p>
+</footer>
+
+<dialog id="dlg">
+  <form method="dialog" id="pf">
+    <h2>Tu meta diaria</h2>
+    <p class="sub">Contanos un poco de vos y calculamos cuántas calorías te convienen.</p>
+    <div class="g2">
+      <label>Sexo<select id="pSex"><option value="m">Hombre</option><option value="f">Mujer</option></select></label>
+      <label>Edad<input id="pAge" type="number" min="14" max="90" required></label>
+      <label>Peso (kg)<input id="pW" type="number" min="30" max="300" step="0.1" required></label>
+      <label>Altura (cm)<input id="pH" type="number" min="120" max="230" required></label>
+    </div>
+    <label>Actividad física<select id="pAct">
+      <option value="1.2">Casi nada (trabajo de escritorio)</option>
+      <option value="1.375">Liviana (1 a 3 días por semana)</option>
+      <option value="1.55" selected>Moderada (3 a 5 días por semana)</option>
+      <option value="1.725">Intensa (6 a 7 días por semana)</option>
+    </select></label>
+    <label>Objetivo<select id="pGoal">
+      <option value="lose">Bajar de peso</option><option value="keep" selected>Mantener mi peso</option><option value="gain">Ganar masa</option>
+    </select></label>
+    <div class="result" id="pRes"></div>
+    <div class="row end"><button class="btn" value="cancel" formnovalidate>Cancelar</button><button class="btn dark" value="ok">Guardar meta</button></div>
+  </form>
+</dialog>
+<div id="toast" role="status"></div>
+<script src="app.js"></script>
+</body>
+</html>
