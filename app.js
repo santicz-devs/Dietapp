@@ -21,6 +21,7 @@ let date = today();
 let entries = load(key(date), []);
 let profile = load("nutri:profile", null);
 if (profile) profile.goal = { lose: "lose_mod", gain: "gain_mod" }[profile.goal] || profile.goal; // perfiles de la v2
+let favs = load("nutri:favs", []);
 
 // ---------- Metas ----------
 function targets() {
@@ -70,11 +71,15 @@ function render() {
   $("#profLink").textContent = profile ? "Editar perfil" : "Calcular mi meta";
 
   const row = e => `<li><div><strong>${esc(e.name)}</strong><small>${esc(e.time)} · P ${+e.protein || 0} g · C ${+e.carbs || 0} g · G ${+e.fat || 0} g</small></div>
-    <b>${+e.kcal || 0} kcal</b><button class="x" data-i="${e.i}" aria-label="Eliminar ${esc(e.name)}">✕</button></li>`;
+    <b>${+e.kcal || 0} kcal</b><button class="star ${favs.some(f => same(f, e)) ? "on" : ""}" data-i="${e.i}" aria-label="Guardar ${esc(e.name)} en frecuentes">${favs.some(f => same(f, e)) ? "★" : "☆"}</button><button class="x" data-i="${e.i}" aria-label="Eliminar ${esc(e.name)}">✕</button></li>`;
   const groups = MEALS.map(([id, name]) => ({ name, items: entries.map((e, i) => ({ ...e, i })).filter(e => (e.meal || "snack") === id) })).filter(g => g.items.length);
   $("#list").innerHTML = groups.length
     ? groups.map(g => `<li class="grp">${g.name}<span>${Math.round(sum(g.items))} kcal</span></li>${g.items.map(row).join("")}`).join("")
     : `<li class="empty">Todavía no registraste nada este día. Sacale una foto a tu plato o cargalo a mano.</li>`;
+
+  $("#favs").innerHTML = favs.length
+    ? favs.map((f, i) => `<div class="fav"><button class="fadd" data-i="${i}"><strong>${esc(f.name)}</strong><small>${+f.kcal || 0} kcal · P ${+f.protein || 0} g</small></button><button class="fx" data-i="${i}" aria-label="Quitar ${esc(f.name)} de frecuentes">✕</button></div>`).join("")
+    : `<p class="empty">Todavía no guardaste ninguna. Tocá la ☆ en una comida de tu registro para tenerla acá.</p>`;
 
   week(T);
 }
@@ -95,6 +100,48 @@ function toast(msg) {
   const t = $("#toast"); t.textContent = msg; t.classList.add("show");
   clearTimeout(tt); tt = setTimeout(() => t.classList.remove("show"), 2800);
 }
+
+// ---------- Frecuentes y repetir ----------
+const same = (a, b) => a.name === b.name && +a.kcal === +b.kcal;
+const nowTime = () => new Date().toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" });
+
+function toggleFav(i) {
+  const e = entries[i], k = favs.findIndex(f => same(f, e));
+  if (k >= 0) { favs.splice(k, 1); toast("Quitada de frecuentes"); }
+  else {
+    favs.push({ name: e.name, meal: e.meal || "snack", kcal: +e.kcal, protein: +e.protein || 0, carbs: +e.carbs || 0, fat: +e.fat || 0 });
+    toast("Guardada en frecuentes");
+  }
+  save("nutri:favs", favs);
+  render();
+}
+
+function addFav(i) {
+  const f = favs[i];
+  if (!f) return;
+  entries.push({ name: f.name, meal: f.meal || mealNow(), kcal: f.kcal, protein: f.protein, carbs: f.carbs, fat: f.fat, time: nowTime() });
+  save(key(date), entries);
+  render();
+  toast(`Agregado: ${f.name} (${f.kcal} kcal)`);
+}
+
+function repeatPrev() {
+  const prev = load(key(shift(date, -1)), []);
+  if (!prev.length) return toast("No hay comidas cargadas el día anterior");
+  if (entries.length && !confirm("Ya tenés comidas cargadas este día. ¿Querés sumar también las del día anterior?")) return;
+  const t = nowTime();
+  prev.forEach(e => entries.push({ ...e, time: t }));
+  save(key(date), entries);
+  render();
+  toast(`Copiamos ${prev.length} ${prev.length === 1 ? "comida" : "comidas"} del día anterior`);
+}
+
+$("#favs").onclick = e => {
+  const x = e.target.closest(".fx"), a = e.target.closest(".fadd");
+  if (x) { favs.splice(+x.dataset.i, 1); save("nutri:favs", favs); render(); toast("Quitada de frecuentes"); }
+  else if (a) addFav(+a.dataset.i);
+};
+$("#repBtn").onclick = repeatPrev;
 
 // ---------- Foto + IA ----------
 function resize(file, max = 1024) {
@@ -182,6 +229,8 @@ $("#form").onsubmit = e => {
 };
 
 $("#list").onclick = e => {
+  const s = e.target.closest(".star");
+  if (s) return toggleFav(+s.dataset.i);
   const b = e.target.closest(".x");
   if (!b) return;
   entries.splice(+b.dataset.i, 1);
