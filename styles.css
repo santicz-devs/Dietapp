@@ -55,7 +55,7 @@ h1{font-size:clamp(2.1rem,5vw,3.6rem);line-height:1.05;font-weight:700;margin-bo
 #status{margin-top:12px;color:var(--muted);font-size:14px}
 form h2{font-size:1.5rem;margin-bottom:16px}
 label{display:block;font-size:14px;font-weight:500;margin-bottom:14px}
-input,select{display:block;width:100%;margin-top:6px;padding:11px 14px;font:inherit;color:var(--ink);background:var(--field);border:1px solid var(--line);border-radius:10px}
+input,select,textarea{display:block;width:100%;margin-top:6px;padding:11px 14px;font:inherit;color:var(--ink);background:var(--field);border:1px solid var(--line);border-radius:10px}
 .g2{display:grid;grid-template-columns:1fr 1fr;gap:0 14px}
 #form.wait{opacity:.4;pointer-events:none}
 .note{font-size:13px;color:var(--muted)}
@@ -103,7 +103,7 @@ dialog h2{font-size:1.5rem}
   nav{display:none}
   .card{padding:22px}
   .cta{position:fixed;left:0;right:0;bottom:0;z-index:6;flex-wrap:nowrap;padding:12px 16px calc(12px + env(safe-area-inset-bottom));background:var(--card);border-top:1px solid var(--line)}
-  .cta .btn{flex:1;padding:12px 6px}
+  .cta .btn{flex:1;padding:12px 2px;font-size:13px}
   .week{padding:20px 10px 10px;gap:4px}
   #list li{grid-template-columns:1fr auto auto auto auto;gap:10px}
 }
@@ -152,3 +152,11 @@ dialog h2{font-size:1.5rem}
 .dot{fill:var(--card);stroke:var(--green);stroke-width:2}
 .last{fill:var(--green)}
 @media(max-width:800px){.wgrid{grid-template-columns:1fr}}
+
+textarea{resize:vertical}
+#textBox{margin-bottom:6px;padding-bottom:14px;border-bottom:1px solid var(--line)}
+#textBox label{margin-bottom:10px}
+#textBox .note{margin-top:10px}
+#scanVid{display:block;width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:12px;background:#000;margin-bottom:10px}
+#codeForm{display:flex;gap:8px;align-items:flex-end;margin-top:14px}
+#codeForm label{flex:1;margin:0}

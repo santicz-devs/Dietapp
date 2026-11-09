@@ -275,16 +275,17 @@ function resize(file, max = 1024) {
   });
 }
 
-async function analyze(dataUrl) {
+async function api(body) {
   if (!API_URL) {
     await new Promise(r => setTimeout(r, 1200));
     return { name: "Plato de ejemplo (modo demo)", kcal: 520, protein: 32, carbs: 48, fat: 20, note: "Modo demo: conectá tu Worker en API_URL." };
   }
-  const res = await fetch(API_URL, { method: "POST", headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ image: dataUrl.split(",")[1], mediaType: "image/jpeg" }) });
-  if (!res.ok) throw new Error("el servidor respondió " + res.status);
-  return res.json();
+  const res = await fetch(API_URL, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  const j = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(j.error || "el servidor respondió " + res.status);
+  return j;
 }
+const analyze = dataUrl => api({ image: dataUrl.split(",")[1], mediaType: "image/jpeg" });
 
 function openPanel(photo, idx = null) {
   editIdx = idx;
@@ -294,6 +295,7 @@ function openPanel(photo, idx = null) {
   $("#formTitle").textContent = idx === null ? "Revisá y agregá" : "Editar comida";
   $("#saveBtn").textContent = idx === null ? "Agregar al día" : "Guardar cambios";
   $("#form").reset();
+  $("#textBox").hidden = photo || idx !== null;
   $("#fMeal").value = mealNow();
   $("#note").textContent = "";
   $("#prevBox").hidden = !photo;
@@ -330,6 +332,85 @@ async function pick(e) {
   e.target.value = "";
   await handle(f);
 }
+
+// ---------- Carga por texto ----------
+function fillFrom(r, note) {
+  $("#fName").value = r.name || "";
+  base = { kcal: +r.kcal || 0, protein: +r.protein || 0, carbs: +r.carbs || 0, fat: +r.fat || 0 };
+  factor = 1; markPortion(1);
+  FIELDS.forEach(([id, k]) => $(id).value = Math.round(base[k]));
+  $("#note").textContent = note ?? r.note ?? "";
+}
+
+$("#tBtn").onclick = async () => {
+  const text = $("#tIn").value.trim();
+  if (text.length < 3) return toast("Escribí qué comiste");
+  const form = $("#form"), btn = $("#tBtn");
+  form.classList.add("wait"); btn.textContent = "Calculando…";
+  try {
+    const r = await api({ text });
+    if (r.error) throw new Error(r.error);
+    fillFrom(r);
+  } catch (err) { $("#note").textContent = "No se pudo calcular: " + err.message + ". Podés cargar los datos a mano."; }
+  finally { form.classList.remove("wait"); btn.textContent = "Calcular con IA"; }
+};
+
+// ---------- Código de barras (Open Food Facts) ----------
+let reader = null, busy = false;
+const loadZX = () => window.ZXing ? Promise.resolve() : new Promise((ok, no) => {
+  const s = document.createElement("script");
+  s.src = "https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js";
+  s.onload = ok; s.onerror = no; document.head.appendChild(s);
+});
+function stopScan() { try { reader?.reset(); } catch {} reader = null; }
+
+async function openScan() {
+  busy = false;
+  $("#scanDlg").showModal();
+  $("#scanSt").textContent = "Iniciando cámara…";
+  try {
+    await loadZX();
+    const hints = new Map([[ZXing.DecodeHintType.POSSIBLE_FORMATS, [ZXing.BarcodeFormat.EAN_13, ZXing.BarcodeFormat.EAN_8, ZXing.BarcodeFormat.UPC_A, ZXing.BarcodeFormat.UPC_E]]]);
+    reader = new ZXing.BrowserMultiFormatReader(hints);
+    await reader.decodeFromConstraints({ video: { facingMode: "environment" } }, $("#scanVid"), res => {
+      if (!res || busy) return;
+      busy = true; stopScan(); $("#scanDlg").close(); lookup(res.getText());
+    });
+    $("#scanSt").textContent = "Buscando el código…";
+  } catch { $("#scanSt").textContent = "No pudimos usar la cámara. Escribí el código abajo."; }
+}
+
+async function lookup(code) {
+  toast("Buscando producto…");
+  try {
+    const r = await fetch(`https://world.openfoodfacts.org/api/v2/product/${code}.json?fields=product_name,product_name_es,brands,nutriments,serving_quantity`);
+    const j = await r.json(), p = j.product;
+    if (j.status !== 1 || !p) throw 0;
+    const n = p.nutriments || {};
+    const k100 = n["energy-kcal_100g"] ?? (n.energy_100g != null ? n.energy_100g / 4.184 : null);
+    if (k100 == null) throw 1;
+    const g = +p.serving_quantity > 0 ? +p.serving_quantity : 100, s = g / 100;
+    const brand = (p.brands || "").split(",")[0].trim(), name = p.product_name_es || p.product_name || "Producto";
+    openPanel(false);
+    fillFrom({ name: brand ? `${name} (${brand})` : name, kcal: k100 * s, protein: (+n.proteins_100g || 0) * s, carbs: (+n.carbohydrates_100g || 0) * s, fat: (+n.fat_100g || 0) * s },
+      `Datos de Open Food Facts. 1 porción = ${g} g${g === 100 ? "" : " (la del envase)"}. Ajustá la porción según cuánto comiste.`);
+  } catch {
+    openPanel(false);
+    $("#note").textContent = "No encontramos ese producto en Open Food Facts. Describilo con texto o cargalo a mano.";
+  }
+}
+
+$("#codeBtn").onclick = openScan;
+$("#scanX").onclick = () => $("#scanDlg").close();
+$("#scanDlg").onclose = stopScan;
+$("#codeForm").onsubmit = e => {
+  e.preventDefault();
+  const code = $("#codeIn").value.replace(/\D/g, "");
+  if (code.length < 8) return toast("Escribí al menos 8 números");
+  $("#codeIn").value = "";
+  $("#scanDlg").close();
+  lookup(code);
+};
 
 $("#camBtn").onclick = () => $("#cam").click();
 $("#galBtn").onclick = () => $("#gal").click();

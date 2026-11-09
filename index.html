@@ -42,7 +42,8 @@
       <div class="cta">
         <button class="btn dark" id="camBtn">Cámara</button>
         <button class="btn" id="galBtn">Galería</button>
-        <button class="btn" id="manBtn">A mano</button>
+        <button class="btn" id="manBtn">Escribir</button>
+        <button class="btn" id="codeBtn">Código</button>
       </div>
       <input type="file" id="cam" accept="image/*" capture="environment" hidden>
       <input type="file" id="gal" accept="image/*" hidden>
@@ -70,6 +71,11 @@
     </div>
     <form id="form">
       <h2 id="formTitle">Revisá y agregá</h2>
+      <div id="textBox">
+        <label>Contá qué comiste<textarea id="tIn" rows="2" maxlength="500" placeholder="Ej: 2 empanadas de carne y una coca"></textarea></label>
+        <button type="button" class="btn" id="tBtn">Calcular con IA</button>
+        <p class="note">O completá los datos a mano, más abajo.</p>
+      </div>
       <label>Plato<input id="fName" required placeholder="Ej: Milanesa con ensalada"></label>
       <label>Comida<select id="fMeal">
         <option value="desayuno">Desayuno</option><option value="almuerzo">Almuerzo</option>
@@ -175,6 +181,17 @@
     <div class="result" id="pRes"></div>
     <div class="row end"><button class="btn" value="cancel" formnovalidate>Cancelar</button><button class="btn dark" value="ok">Guardar meta</button></div>
   </form>
+</dialog>
+<dialog id="scanDlg">
+  <h2>Escanear código</h2>
+  <p class="sub">Apuntá la cámara al código de barras del envase.</p>
+  <video id="scanVid" playsinline muted></video>
+  <p class="note" id="scanSt"></p>
+  <form id="codeForm">
+    <label>¿No lo lee? Escribí los números<input id="codeIn" inputmode="numeric" placeholder="7791234567890"></label>
+    <button class="btn dark">Buscar</button>
+  </form>
+  <div class="row end"><button type="button" class="btn" id="scanX">Cerrar</button></div>
 </dialog>
 <div id="toast" role="status"></div>
 <script src="app.js"></script>
