@@ -351,8 +351,10 @@ $("#tBtn").onclick = async () => {
     const r = await api({ text });
     if (r.error) throw new Error(r.error);
     fillFrom(r);
-  } catch (err) { $("#note").textContent = "No se pudo calcular: " + err.message + ". Podés cargar los datos a mano."; }
-  finally { form.classList.remove("wait"); btn.textContent = "Calcular con IA"; }
+  } catch (err) {
+    $("#note").textContent = "No se pudo calcular: " + err.message + ". Podés cargar los datos a mano.";
+    toast("No se pudo calcular: " + err.message);
+  } finally { form.classList.remove("wait"); btn.textContent = "Calcular con IA"; }
 };
 
 // ---------- Código de barras (Open Food Facts) ----------
