@@ -69,12 +69,18 @@
       <p id="status" role="status"></p>
     </div>
     <form id="form">
-      <h2>Revisá y agregá</h2>
+      <h2 id="formTitle">Revisá y agregá</h2>
       <label>Plato<input id="fName" required placeholder="Ej: Milanesa con ensalada"></label>
       <label>Comida<select id="fMeal">
         <option value="desayuno">Desayuno</option><option value="almuerzo">Almuerzo</option>
         <option value="merienda">Merienda</option><option value="cena">Cena</option><option value="snack">Snack</option>
       </select></label>
+      <div class="portion" id="portion" role="group" aria-label="Porción">
+        <span>Porción <small>(1 = el plato completo)</small></span>
+        <div>
+          <button type="button" data-f="0.25">¼</button><button type="button" data-f="0.5">½</button><button type="button" data-f="0.75">¾</button><button type="button" data-f="1" class="on">1</button><button type="button" data-f="1.5">1½</button><button type="button" data-f="2">2</button>
+        </div>
+      </div>
       <div class="g2">
         <label>Calorías (kcal)<input id="fK" type="number" min="0" required></label>
         <label>Proteínas (g)<input id="fP" type="number" min="0"></label>
@@ -82,7 +88,7 @@
         <label>Grasas (g)<input id="fF" type="number" min="0"></label>
       </div>
       <p class="note" id="note"></p>
-      <div class="row end"><button type="button" class="btn" id="cancelBtn">Cancelar</button><button class="btn dark">Agregar al día</button></div>
+      <div class="row end"><button type="button" class="btn" id="cancelBtn">Cancelar</button><button class="btn dark" id="saveBtn">Agregar al día</button></div>
     </form>
   </section>
 

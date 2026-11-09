@@ -75,12 +75,12 @@ section h2{font-size:2rem;margin-bottom:6px}
 
 #registro{padding:8px 0 72px}
 #list{list-style:none;padding:0}
-#list li{display:grid;grid-template-columns:1fr auto auto auto;gap:14px;align-items:center;padding:14px 0;border-bottom:1px solid var(--line)}
+#list li{display:grid;grid-template-columns:1fr auto auto auto auto;gap:14px;align-items:center;padding:14px 0;border-bottom:1px solid var(--line)}
 #list li.grp{display:flex;justify-content:space-between;padding:22px 0 8px;border-bottom:2px solid var(--green);font:700 1.1rem "Bricolage Grotesque",system-ui,sans-serif}
 #list li.grp span{font:500 14px "Hanken Grotesk",system-ui,sans-serif;color:var(--muted)}
 #list small{display:block;color:var(--muted)}
 #list .empty{display:block;color:var(--muted);border:0}
-.x,.star{background:none;border:0;color:var(--muted);font-size:16px;cursor:pointer;padding:6px}
+.x,.star,.edit{background:none;border:0;color:var(--muted);font-size:16px;cursor:pointer;padding:6px}
 .x:hover{color:var(--bad)}
 
 footer{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;padding:28px clamp(16px,5vw,64px);border-top:1px solid var(--line);color:var(--muted);font-size:14px}
@@ -105,7 +105,7 @@ dialog h2{font-size:1.5rem}
   .cta{position:fixed;left:0;right:0;bottom:0;z-index:6;flex-wrap:nowrap;padding:12px 16px calc(12px + env(safe-area-inset-bottom));background:var(--card);border-top:1px solid var(--line)}
   .cta .btn{flex:1;padding:12px 6px}
   .week{padding:20px 10px 10px;gap:4px}
-  #list li{grid-template-columns:1fr auto auto auto;gap:10px}
+  #list li{grid-template-columns:1fr auto auto auto auto;gap:10px}
 }
 @media(prefers-reduced-motion:reduce){*{transition:none!important;scroll-behavior:auto!important}}
 
@@ -127,3 +127,10 @@ dialog h2{font-size:1.5rem}
 .fx{position:absolute;top:6px;right:6px;width:30px;height:30px;border:0;background:none;color:var(--muted);font-size:14px;cursor:pointer;border-radius:50%}
 .fx:hover{color:var(--bad)}
 @media(max-width:800px){.favs{flex-wrap:nowrap;overflow-x:auto;margin:0 -16px;padding:0 16px 8px;scroll-snap-type:x proximity}.fav{scroll-snap-align:start}}
+
+.edit:hover{color:var(--green)}
+.portion{margin-bottom:14px;font-size:14px;font-weight:500}
+.portion small{color:var(--muted);font-weight:400}
+.portion div{display:flex;gap:6px;margin-top:6px}
+.portion button{flex:1;padding:9px 0;border:1px solid var(--line);border-radius:10px;background:var(--field);color:var(--ink);font:inherit;font-weight:600;cursor:pointer;transition:background .2s}
+.portion button.on{background:var(--green);border-color:var(--green);color:var(--on)}

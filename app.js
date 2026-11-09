@@ -70,8 +70,8 @@ function render() {
   $("#metaTxt").textContent = profile ? `Objetivo: ${GOAL_NAMES[profile.goal] || "personalizado"}.` : "Esta es una meta de ejemplo.";
   $("#profLink").textContent = profile ? "Editar perfil" : "Calcular mi meta";
 
-  const row = e => `<li><div><strong>${esc(e.name)}</strong><small>${esc(e.time)} · P ${+e.protein || 0} g · C ${+e.carbs || 0} g · G ${+e.fat || 0} g</small></div>
-    <b>${+e.kcal || 0} kcal</b><button class="star ${favs.some(f => same(f, e)) ? "on" : ""}" data-i="${e.i}" aria-label="Guardar ${esc(e.name)} en frecuentes">${favs.some(f => same(f, e)) ? "★" : "☆"}</button><button class="x" data-i="${e.i}" aria-label="Eliminar ${esc(e.name)}">✕</button></li>`;
+  const row = e => `<li><div><strong>${esc(e.name)}</strong><small>${esc(e.time)}${portTxt(+e.portion)} · P ${+e.protein || 0} g · C ${+e.carbs || 0} g · G ${+e.fat || 0} g</small></div>
+    <b>${+e.kcal || 0} kcal</b><button class="edit" data-i="${e.i}" aria-label="Editar ${esc(e.name)}">✎</button><button class="star ${favs.some(f => same(f, e)) ? "on" : ""}" data-i="${e.i}" aria-label="Guardar ${esc(e.name)} en frecuentes">${favs.some(f => same(f, e)) ? "★" : "☆"}</button><button class="x" data-i="${e.i}" aria-label="Eliminar ${esc(e.name)}">✕</button></li>`;
   const groups = MEALS.map(([id, name]) => ({ name, items: entries.map((e, i) => ({ ...e, i })).filter(e => (e.meal || "snack") === id) })).filter(g => g.items.length);
   $("#list").innerHTML = groups.length
     ? groups.map(g => `<li class="grp">${g.name}<span>${Math.round(sum(g.items))} kcal</span></li>${g.items.map(row).join("")}`).join("")
@@ -99,6 +99,40 @@ let tt;
 function toast(msg) {
   const t = $("#toast"); t.textContent = msg; t.classList.add("show");
   clearTimeout(tt); tt = setTimeout(() => t.classList.remove("show"), 2800);
+}
+
+// ---------- Porciones y edición ----------
+const FIELDS = [["#fK", "kcal"], ["#fP", "protein"], ["#fC", "carbs"], ["#fF", "fat"]];
+const PORT = { .25: "¼", .5: "½", .75: "¾", 1.5: "1½", 2: "2" };
+const portTxt = p => p && p !== 1 ? ` · ${PORT[p] || p} ${p > 1 ? "porciones" : "porción"}` : "";
+let editIdx = null, factor = 1, base = { kcal: 0, protein: 0, carbs: 0, fat: 0 };
+
+const markPortion = f => document.querySelectorAll("#portion button").forEach(b => {
+  b.classList.toggle("on", +b.dataset.f === f);
+  b.setAttribute("aria-pressed", +b.dataset.f === f);
+});
+
+function setPortion(f) {
+  factor = f;
+  markPortion(f);
+  if (Object.values(base).some(v => v)) FIELDS.forEach(([id, k]) => $(id).value = Math.round(base[k] * f));
+}
+
+// si corregís un número a mano, la porción elegida sigue funcionando sobre ese valor
+$("#form").addEventListener("input", ev => {
+  const m = FIELDS.find(([id]) => id === "#" + ev.target.id);
+  if (m) base[m[1]] = (+ev.target.value || 0) / factor;
+});
+$("#portion").onclick = e => { const b = e.target.closest("button"); if (b) setPortion(+b.dataset.f); };
+
+function editEntry(i) {
+  const e = entries[i], p = +e.portion || 1;
+  openPanel(false, i);
+  $("#fName").value = e.name;
+  $("#fMeal").value = e.meal || "snack";
+  FIELDS.forEach(([id, k]) => { $(id).value = +e[k] || 0; base[k] = (+e[k] || 0) / p; });
+  factor = p;
+  markPortion(p);
 }
 
 // ---------- Frecuentes y repetir ----------
@@ -171,7 +205,13 @@ async function analyze(dataUrl) {
   return res.json();
 }
 
-function openPanel(photo) {
+function openPanel(photo, idx = null) {
+  editIdx = idx;
+  base = { kcal: 0, protein: 0, carbs: 0, fat: 0 };
+  factor = 1;
+  markPortion(1);
+  $("#formTitle").textContent = idx === null ? "Revisá y agregá" : "Editar comida";
+  $("#saveBtn").textContent = idx === null ? "Agregar al día" : "Guardar cambios";
   $("#form").reset();
   $("#fMeal").value = mealNow();
   $("#note").textContent = "";
@@ -194,6 +234,8 @@ async function handle(file) {
     $("#fName").value = r.name;
     $("#fK").value = Math.round(r.kcal); $("#fP").value = Math.round(r.protein);
     $("#fC").value = Math.round(r.carbs); $("#fF").value = Math.round(r.fat);
+    base = { kcal: +r.kcal || 0, protein: +r.protein || 0, carbs: +r.carbs || 0, fat: +r.fat || 0 };
+    factor = 1; markPortion(1);
     $("#note").textContent = r.note || "";
     st.textContent = "Listo. Corregí lo que quieras antes de agregar.";
   } catch (err) {
@@ -219,22 +261,27 @@ $("#form").onsubmit = e => {
   e.preventDefault();
   const e1 = { name: $("#fName").value.trim(), meal: $("#fMeal").value, kcal: +$("#fK").value,
     protein: +$("#fP").value || 0, carbs: +$("#fC").value || 0, fat: +$("#fF").value || 0,
-    time: new Date().toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" }) };
-  entries.push(e1);
+    time: nowTime(), portion: factor };
+  const edit = editIdx !== null;
+  if (edit) entries[editIdx] = { ...e1, time: entries[editIdx].time }; else entries.push(e1);
+  editIdx = null;
   save(key(date), entries);
   $("#analizar").hidden = true;
   render();
-  scrollTo({ top: 0, behavior: "smooth" });
-  toast(`Agregado: ${e1.name} (${e1.kcal} kcal)`);
+  if (!edit) scrollTo({ top: 0, behavior: "smooth" });
+  toast(edit ? "Cambios guardados" : `Agregado: ${e1.name} (${e1.kcal} kcal)`);
 };
 
 $("#list").onclick = e => {
   const s = e.target.closest(".star");
   if (s) return toggleFav(+s.dataset.i);
+  const ed = e.target.closest(".edit");
+  if (ed) return editEntry(+ed.dataset.i);
   const b = e.target.closest(".x");
   if (!b) return;
   entries.splice(+b.dataset.i, 1);
   save(key(date), entries);
+  if (editIdx !== null) { editIdx = null; $("#analizar").hidden = true; }
   render();
   toast("Comida eliminada");
 };
