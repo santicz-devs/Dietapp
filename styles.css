@@ -108,3 +108,7 @@ dialog h2{font-size:1.5rem}
   #list li{grid-template-columns:1fr auto auto;gap:10px}
 }
 @media(prefers-reduced-motion:reduce){*{transition:none!important;scroll-behavior:auto!important}}
+
+.tip{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:40px}
+.tip p{font-size:15px}
+.data{display:flex;gap:18px}

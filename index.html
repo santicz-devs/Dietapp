@@ -5,6 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#e8f1e1">
 <title>DietApp — Seguidor de dieta con IA</title>
+<meta name="description" content="Sacale una foto a tu plato y la IA calcula calorías y macros.">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="DietApp">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <script>try{document.documentElement.dataset.theme=localStorage.getItem("nutri:theme")||(matchMedia("(prefers-color-scheme:dark)").matches?"dark":"light")}catch{}</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -29,7 +37,7 @@
         <strong id="today"></strong>
         <button id="dNext" aria-label="Día siguiente">›</button>
       </div>
-      <h1>Sacale una foto a tu plato y conta las calorías.</h1>
+      <h1>Sacale una foto a tu plato y la IA cuenta las calorías.</h1>
       <p class="lead">Calorías, proteínas, carbohidratos y grasas en segundos. Todo queda guardado en tu dispositivo.</p>
       <div class="cta">
         <button class="btn dark" id="camBtn">Cámara</button>
@@ -78,6 +86,11 @@
     </form>
   </section>
 
+  <div class="tip card" id="tip" hidden>
+    <p><strong>Instalá DietApp en tu iPhone.</strong> Abrila en Safari, tocá Compartir y elegí “Agregar a pantalla de inicio”.</p>
+    <button class="link" id="tipX">Entendido</button>
+  </div>
+
   <section id="semana">
     <h2>Tu semana</h2>
     <p class="sub">Tocá un día para ver o completar lo que comiste. La línea punteada es tu meta.</p>
@@ -93,6 +106,11 @@
 <footer>
   <span class="logo">DietApp</span>
   <p>Las estimaciones son aproximadas y no reemplazan a un profesional de la salud.</p>
+  <div class="data">
+    <button class="link" id="expBtn">Exportar datos</button>
+    <button class="link" id="impBtn">Importar datos</button>
+    <input type="file" id="impFile" accept="application/json,.json" hidden>
+  </div>
 </footer>
 
 <dialog id="dlg">
@@ -112,7 +130,17 @@
       <option value="1.725">Intensa (6 a 7 días por semana)</option>
     </select></label>
     <label>Objetivo<select id="pGoal">
-      <option value="lose">Bajar de peso</option><option value="keep" selected>Mantener mi peso</option><option value="gain">Ganar masa</option>
+      <optgroup label="Bajar de peso (déficit)">
+        <option value="lose_light">Déficit leve (−10%)</option>
+        <option value="lose_mod">Déficit moderado (−20%)</option>
+        <option value="lose_agg">Déficit agresivo (−30%)</option>
+      </optgroup>
+      <option value="keep" selected>Mantener mi peso</option>
+      <optgroup label="Ganar masa (superávit)">
+        <option value="gain_light">Superávit leve (+5%)</option>
+        <option value="gain_mod">Superávit moderado (+10%)</option>
+        <option value="gain_agg">Superávit agresivo (+15%)</option>
+      </optgroup>
     </select></label>
     <div class="result" id="pRes"></div>
     <div class="row end"><button class="btn" value="cancel" formnovalidate>Cancelar</button><button class="btn dark" value="ok">Guardar meta</button></div>

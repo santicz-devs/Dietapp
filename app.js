@@ -20,6 +20,7 @@ const CIRC = 2 * Math.PI * 95;
 let date = today();
 let entries = load(key(date), []);
 let profile = load("nutri:profile", null);
+if (profile) profile.goal = { lose: "lose_mod", gain: "gain_mod" }[profile.goal] || profile.goal; // perfiles de la v2
 
 // ---------- Metas ----------
 function targets() {
@@ -28,17 +29,20 @@ function targets() {
   return { kcal: k, p: Math.round(k * .25 / 4), c: Math.round(k * .45 / 4), f: Math.round(k * .30 / 9) };
 }
 
+const GOALS = { lose_light: -.10, lose_mod: -.20, lose_agg: -.30, keep: 0, gain_light: .05, gain_mod: .10, gain_agg: .15 };
+const GOAL_NAMES = { lose_light: "déficit leve", lose_mod: "déficit moderado", lose_agg: "déficit agresivo", keep: "mantener peso", gain_light: "superávit leve", gain_mod: "superávit moderado", gain_agg: "superávit agresivo" };
+
 // Fórmula de Mifflin-St Jeor + factor de actividad + ajuste según objetivo
 function calc(x) {
   const bmr = 10 * x.w + 6.25 * x.h - 5 * x.age + (x.sex === "m" ? 5 : -161);
-  const tdee = bmr * x.act;
-  const adj = { lose: .85, keep: 1, gain: 1.1 }[x.goal];
+  const tdee = Math.round(bmr * x.act / 10) * 10;
   const floor = x.sex === "m" ? 1500 : 1200;
-  const kcal = Math.max(floor, Math.round(tdee * adj / 10) * 10);
-  const p = Math.round(x.w * (x.goal === "lose" ? 1.8 : 1.6));
+  const want = Math.round(tdee * (1 + GOALS[x.goal]) / 10) * 10;
+  const kcal = Math.max(floor, want);
+  const p = Math.round(x.w * (x.goal === "lose_agg" ? 2 : x.goal.startsWith("lose") ? 1.8 : 1.6));
   const f = Math.round(kcal * .25 / 9);
   const c = Math.max(0, Math.round((kcal - p * 4 - f * 9) / 4));
-  return { tdee: Math.round(tdee / 10) * 10, kcal, p, c, f };
+  return { tdee, kcal, p, c, f, diff: kcal - tdee, floored: want < floor };
 }
 
 // ---------- Pantalla ----------
@@ -62,11 +66,11 @@ function render() {
     $(`#${id}T`).textContent = `${Math.round(t[k])} / ${g} g`;
     $(`#${id}B`).style.width = Math.min(t[k] / g * 100, 100) + "%";
   });
-  $("#metaTxt").textContent = profile ? "Meta calculada con tus datos." : "Esta es una meta de ejemplo.";
+  $("#metaTxt").textContent = profile ? `Objetivo: ${GOAL_NAMES[profile.goal] || "personalizado"}.` : "Esta es una meta de ejemplo.";
   $("#profLink").textContent = profile ? "Editar perfil" : "Calcular mi meta";
 
-  const row = e => `<li><div><strong>${esc(e.name)}</strong><small>${e.time} · P ${e.protein} g · C ${e.carbs} g · G ${e.fat} g</small></div>
-    <b>${e.kcal} kcal</b><button class="x" data-i="${e.i}" aria-label="Eliminar ${esc(e.name)}">✕</button></li>`;
+  const row = e => `<li><div><strong>${esc(e.name)}</strong><small>${esc(e.time)} · P ${+e.protein || 0} g · C ${+e.carbs || 0} g · G ${+e.fat || 0} g</small></div>
+    <b>${+e.kcal || 0} kcal</b><button class="x" data-i="${e.i}" aria-label="Eliminar ${esc(e.name)}">✕</button></li>`;
   const groups = MEALS.map(([id, name]) => ({ name, items: entries.map((e, i) => ({ ...e, i })).filter(e => (e.meal || "snack") === id) })).filter(g => g.items.length);
   $("#list").innerHTML = groups.length
     ? groups.map(g => `<li class="grp">${g.name}<span>${Math.round(sum(g.items))} kcal</span></li>${g.items.map(row).join("")}`).join("")
@@ -198,8 +202,12 @@ const valid = x => x.age >= 14 && x.age <= 90 && x.w >= 30 && x.h >= 120;
 function preview() {
   const x = fields();
   if (!valid(x)) { $("#pRes").textContent = "Completá tus datos para ver tu meta."; return; }
-  const r = calc(x);
-  $("#pRes").innerHTML = `<strong>${r.kcal} kcal por día</strong>Tu gasto diario estimado es de ${r.tdee} kcal. Tu objetivo diario: ${r.p} g de proteínas, ${r.c} g de carbohidratos y ${r.f} g de grasas.`;
+  const r = calc(x), d = r.diff;
+  const line = d ? `${d < 0 ? "Déficit" : "Superávit"} de ${Math.abs(d)} kcal por día, cerca de ${Math.abs(d * 7 / 7700).toFixed(2).replace(".", ",")} kg por semana (estimado).` : "Es lo que gastás por día para mantener tu peso.";
+  const warn = r.floored ? " Ajustamos tu meta al mínimo diario de seguridad."
+    : x.goal === "lose_agg" ? " Un déficit agresivo es exigente: conviene sostenerlo poco tiempo y, si podés, con seguimiento profesional."
+    : x.goal === "gain_agg" ? " Un superávit alto también suma grasa, no solo músculo." : "";
+  $("#pRes").innerHTML = `<strong>${r.kcal} kcal por día</strong>Tu gasto diario estimado es de ${r.tdee} kcal. ${line}${warn} Tu objetivo: ${r.p} g de proteínas, ${r.c} g de carbohidratos y ${r.f} g de grasas.`;
 }
 
 function openProfile() {
@@ -230,6 +238,44 @@ function setTheme(t) {
   document.querySelector('meta[name="theme-color"]').content = t === "dark" ? "#10231a" : "#e8f1e1";
 }
 $("#themeBtn").onclick = () => setTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark");
+
+// ---------- Respaldo de datos ----------
+async function exportData() {
+  const data = {};
+  for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k.startsWith("nutri:")) data[k] = localStorage.getItem(k); }
+  const name = `dietapp-respaldo-${today()}.json`;
+  const file = new File([JSON.stringify({ app: "dietapp", v: 1, data })], name, { type: "application/json" });
+  try {
+    if (navigator.canShare?.({ files: [file] })) { await navigator.share({ files: [file], title: "Respaldo de DietApp" }); return; }
+  } catch (e) { if (e.name === "AbortError") return; }
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(file); a.download = name; a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  toast("Respaldo descargado");
+}
+
+async function importData(file) {
+  try {
+    const j = JSON.parse(await file.text());
+    const d = j.data || {}, keys = Object.keys(d).filter(k => k.startsWith("nutri:"));
+    if (j.app !== "dietapp" || !keys.length) throw 0;
+    const dias = keys.filter(k => /^nutri:\d{4}-/.test(k)).length;
+    if (!confirm(`Se van a cargar ${dias} días de comidas y tu perfil. Si ya tenés datos de esos mismos días, se reemplazan. ¿Seguimos?`)) return;
+    keys.forEach(k => ls.set(k, d[k]));
+    toast("Datos importados");
+    setTimeout(() => location.reload(), 700);
+  } catch { toast("Ese archivo no parece un respaldo de DietApp"); }
+}
+
+$("#expBtn").onclick = exportData;
+$("#impBtn").onclick = () => $("#impFile").click();
+$("#impFile").onchange = e => { const f = e.target.files[0]; e.target.value = ""; if (f) importData(f); };
+
+// ---------- Instalación (iPhone) ----------
+const standalone = navigator.standalone || matchMedia("(display-mode: standalone)").matches;
+if (/iphone|ipad/i.test(navigator.userAgent) && !standalone && !ls.get("nutri:tipHidden")) $("#tip").hidden = false;
+$("#tipX").onclick = () => { $("#tip").hidden = true; ls.set("nutri:tipHidden", "1"); };
+if ("serviceWorker" in navigator) addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
 
 // ---------- Inicio ----------
 setTheme(document.documentElement.dataset.theme || "light");
