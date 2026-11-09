@@ -22,7 +22,7 @@
 <body>
 <header class="top">
   <a class="logo" href="#hoy">DietApp</a>
-  <nav><a href="#hoy">Hoy</a><a href="#semana">Semana</a><a href="#registro">Registro</a></nav>
+  <nav><a href="#hoy">Hoy</a><a href="#semana">Semana</a><a href="#peso">Peso</a><a href="#registro">Registro</a></nav>
   <div class="tools">
     <button class="btn" id="themeBtn">Modo oscuro</button>
     <button class="btn dark" id="profBtn">Mi perfil</button>
@@ -107,6 +107,24 @@
     <h2>Tu semana</h2>
     <p class="sub">Tocá un día para ver o completar lo que comiste. La línea punteada es tu meta.</p>
     <div class="week card" id="week"></div>
+  </section>
+
+  <section id="peso">
+    <h2>Tu peso</h2>
+    <p class="sub">Anotá tu peso y DietApp recalcula tu meta de calorías cuando cambia.</p>
+    <div class="wgrid">
+      <div class="card">
+        <p class="wlabel">Peso actual</p>
+        <p class="big" id="wCur">—</p>
+        <p class="sub" id="wDelta"></p>
+        <form id="wForm">
+          <label>Peso en kg <span id="wFor"></span><input id="wIn" type="number" step="0.1" min="30" max="300" required></label>
+          <button class="btn dark">Registrar peso</button>
+        </form>
+        <ul id="wList"></ul>
+      </div>
+      <div class="card"><div id="wChart"></div></div>
+    </div>
   </section>
 
   <section id="registro">

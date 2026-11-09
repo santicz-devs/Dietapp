@@ -82,6 +82,7 @@ function render() {
     : `<p class="empty">Todavía no guardaste ninguna. Tocá la ☆ en una comida de tu registro para tenerla acá.</p>`;
 
   week(T);
+  renderWeight();
 }
 
 function week(T) {
@@ -100,6 +101,86 @@ function toast(msg) {
   const t = $("#toast"); t.textContent = msg; t.classList.add("show");
   clearTimeout(tt); tt = setTimeout(() => t.classList.remove("show"), 2800);
 }
+
+// ---------- Peso corporal ----------
+let weights = load("nutri:weights", []);
+const fmtKg = n => n.toFixed(1).replace(".", ",");
+const sign = v => v > 0 ? "+" : v < 0 ? "−" : "";
+const dayLabel = d => at(d).toLocaleDateString("es-AR", { day: "numeric", month: "short" }).replace(".", "");
+
+function setWeight(d, w, recalc = true) {
+  const i = weights.findIndex(p => p.d === d);
+  if (i >= 0) weights[i].w = w; else weights.push({ d, w });
+  weights.sort((a, b) => a.d.localeCompare(b.d));
+  save("nutri:weights", weights);
+  if (recalc) syncProfile();
+}
+
+// la meta siempre se calcula con tu peso más reciente
+function syncProfile() {
+  if (!profile || !weights.length) return;
+  const w = weights[weights.length - 1].w;
+  if (w === profile.w) return;
+  profile.w = w;
+  profile.t = calc(profile);
+  save("nutri:profile", profile);
+}
+
+function weightChart() {
+  const el = $("#wChart"), pts = weights.slice(-60);
+  if (pts.length < 2) { el.innerHTML = `<p class="empty">Registrá al menos dos pesos para ver tu gráfico.</p>`; return; }
+  const W = el.clientWidth || 600, H = 210, L = 42, R = 14, T = 14, B = 28;
+  const t = d => at(d).getTime(), t0 = t(pts[0].d), t1 = t(pts[pts.length - 1].d);
+  const ws = pts.map(p => p.w), lo = Math.min(...ws) - .5, hi = Math.max(...ws) + .5;
+  const x = d => L + (t1 === t0 ? 0 : (t(d) - t0) / (t1 - t0)) * (W - L - R);
+  const y = w => T + (hi - w) / (hi - lo) * (H - T - B);
+  const line = pts.map((p, i) => `${i ? "L" : "M"}${x(p.d).toFixed(1)} ${y(p.w).toFixed(1)}`).join(" ");
+  const lastI = pts.length - 1;
+  el.innerHTML = `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-label="Evolución de tu peso">
+    ${[hi, (hi + lo) / 2, lo].map(v => `<line class="gl" x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}"/><text x="${L - 8}" y="${y(v) + 4}" text-anchor="end">${fmtKg(v)}</text>`).join("")}
+    <path class="ln" d="${line}"/>
+    ${pts.map((p, i) => `<circle class="${i === lastI ? "last" : "dot"}" cx="${x(p.d).toFixed(1)}" cy="${y(p.w).toFixed(1)}" r="${i === lastI ? 5 : 3.5}"><title>${dayLabel(p.d)}: ${fmtKg(p.w)} kg</title></circle>`).join("")}
+    <text x="${L}" y="${H - 6}">${dayLabel(pts[0].d)}</text><text x="${W - R}" y="${H - 6}" text-anchor="end">${dayLabel(pts[lastI].d)}</text></svg>`;
+}
+
+function renderWeight() {
+  const last = weights[weights.length - 1], cur = last ? last.w : profile?.w;
+  $("#wCur").textContent = cur ? `${fmtKg(cur)} kg` : "—";
+  $("#wFor").textContent = date === today() ? "· hoy" : "· " + dayLabel(date);
+  let txt = "Anotá tu peso para empezar el seguimiento.";
+  if (weights.length >= 2) {
+    let ref = weights.find(p => p.d >= shift(last.d, -30));
+    if (ref === last) ref = weights[weights.length - 2];
+    const diff = last.w - ref.w, days = (at(last.d) - at(ref.d)) / 864e5, rate = diff / days * 7;
+    txt = `${sign(diff)}${fmtKg(Math.abs(diff))} kg desde el ${dayLabel(ref.d)}` + (days >= 7 ? ` · ${sign(rate)}${fmtKg(Math.abs(rate))} kg por semana` : "");
+  } else if (weights.length === 1) txt = "Anotá otro peso más adelante para ver tu tendencia.";
+  $("#wDelta").textContent = txt;
+  const onDay = weights.find(p => p.d === date);
+  if (document.activeElement !== $("#wIn")) $("#wIn").value = (onDay ? onDay.w : cur) || "";
+  $("#wList").innerHTML = weights.slice(-5).reverse().map(p => `<li><span>${dayLabel(p.d)}</span><b>${fmtKg(p.w)} kg</b><button class="x" data-d="${p.d}" aria-label="Eliminar peso del ${dayLabel(p.d)}">✕</button></li>`).join("");
+  weightChart();
+}
+
+$("#wForm").onsubmit = e => {
+  e.preventDefault();
+  const w = Math.round(+$("#wIn").value * 10) / 10;
+  if (!(w >= 30 && w <= 300)) return;
+  const before = profile?.t.kcal;
+  setWeight(date, w);
+  render();
+  toast(profile && profile.t.kcal !== before ? `Peso registrado. Tu meta ahora es de ${profile.t.kcal} kcal por día` : "Peso registrado");
+};
+$("#wList").onclick = e => {
+  const b = e.target.closest(".x");
+  if (!b) return;
+  weights = weights.filter(p => p.d !== b.dataset.d);
+  save("nutri:weights", weights);
+  syncProfile();
+  render();
+  toast("Registro de peso eliminado");
+};
+let rt;
+addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(weightChart, 150); });
 
 // ---------- Porciones y edición ----------
 const FIELDS = [["#fK", "kcal"], ["#fP", "protein"], ["#fC", "carbs"], ["#fF", "fat"]];
@@ -320,6 +401,8 @@ dlg.onclose = () => {
   const x = fields();
   if (dlg.returnValue === "ok" && valid(x)) {
     profile = { ...x, t: calc(x) };
+    const cur = weights.length ? weights[weights.length - 1].w : null;
+    if (cur === null || x.w !== cur) setWeight(today(), x.w, false);
     save("nutri:profile", profile);
     render();
     toast(`Meta guardada: ${profile.t.kcal} kcal por día`);

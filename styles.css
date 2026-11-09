@@ -134,3 +134,21 @@ dialog h2{font-size:1.5rem}
 .portion div{display:flex;gap:6px;margin-top:6px}
 .portion button{flex:1;padding:9px 0;border:1px solid var(--line);border-radius:10px;background:var(--field);color:var(--ink);font:inherit;font-weight:600;cursor:pointer;transition:background .2s}
 .portion button.on{background:var(--green);border-color:var(--green);color:var(--on)}
+
+#peso{padding:8px 0 48px}
+.wgrid{display:grid;grid-template-columns:minmax(260px,340px) 1fr;gap:20px;align-items:start}
+.wgrid .big{font-size:2.6rem}
+.wgrid .sub{margin:6px 0 18px;font-size:14px}
+.wlabel{color:var(--muted);font-size:14px}
+#wFor{font-weight:400;color:var(--muted)}
+#wForm .btn{width:100%}
+#wList{list-style:none;padding:0;margin-top:18px}
+#wList li{display:grid;grid-template-columns:1fr auto auto;gap:12px;align-items:center;padding:10px 0;border-top:1px solid var(--line);font-size:14px}
+#wChart .empty{color:var(--muted);font-size:15px;padding:40px 0;text-align:center}
+#wChart svg{display:block}
+#wChart text{font:12px "Hanken Grotesk",system-ui,sans-serif;fill:var(--muted)}
+.gl{stroke:var(--line);stroke-dasharray:3 4}
+.ln{fill:none;stroke:var(--green);stroke-width:2.5;stroke-linejoin:round;stroke-linecap:round}
+.dot{fill:var(--card);stroke:var(--green);stroke-width:2}
+.last{fill:var(--green)}
+@media(max-width:800px){.wgrid{grid-template-columns:1fr}}
